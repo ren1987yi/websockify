@@ -67,30 +67,26 @@ class HttpRequestHandler_Plugin:
     VM_FILE = "VM_Configure.JSON"
     def __init__(self, baseHttp):
 
-        print('init plugin')
+        # print('init plugin')
 
-        self.baseHttp = baseHttp
+        self.baseHttp : SimpleHTTPRequestHandler = baseHttp
 
-        print('init plugin1')
+        # print('init plugin1')
 
         self.router = {
             "GET":{
-             
                     "/api/vms":self.get_vms
             },
             "POST":{
-                
                     "/api/vms":self.post_vms
-
             }
             ,
             "DELETE":
-                {
-                    "/api/vms/\d":self.delete_vms
-                }
-            
+            {
+                "/api/vms/\d":self.delete_vms
+            }
         }
-        print('init plugin2')
+        # print('init plugin2')
 
         pass
 
@@ -224,7 +220,7 @@ class HttpRequestHandler_Plugin:
             result,state = self._delete_vm(s_id)
             self._send_txt(result, status=state)
         else:
-            self.baseHttp.send_error405
+            self.baseHttp.send_error(405)
         pass
 
 
@@ -298,13 +294,6 @@ class HttpRequestHandler_Plugin:
             print(f"File Name: {exc_tb.tb_frame.f_code.co_filename}")
             print(f"Line Number: {exc_tb.tb_lineno}")
 
-       
-
-        pass
-
-
-
-
     def _load_vms_txt(self):
         if not os.path.exists(self.VM_FILE):
             self._save_vms([])
@@ -328,9 +317,8 @@ class HttpRequestHandler_Plugin:
 
 
     def _add_vm(self, data):
-
         if not data or not data.get("name") or not data.get("ip") or not data.get("port"):
-            return jsonify({"error": "参数不完整"}), 400
+            return json.dumps({"error": "参数不完整"}), 400
 
         name = data['name']
         ip = data['ip']
@@ -356,7 +344,7 @@ class HttpRequestHandler_Plugin:
         vm_list = self._load_vms_object()
         new_list = [vm for vm in vm_list if str(vm["id"]) != str(vm_id)]
         if len(new_list) == len(vm_list):
-            return jsonify({"error": "未找到此VM"}), 404
+            return json.dumps({"error": "未找到此VM"}), 404
         self._save_vms(new_list)
         return "", 204
 
@@ -413,7 +401,7 @@ class WebSockifyRequestHandler(WebSocketRequestHandlerMixIn, SimpleHTTPRequestHa
 
 
         self.httpHandler = HttpRequestHandler_Plugin(self)
-        print('init ok')
+        # print('init ok')
         super().__init__(req, addr, server)
 
 
