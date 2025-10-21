@@ -24,13 +24,11 @@ import sys
 import time
 import io
 import json
-# from flask import Flask, request, jsonify
-
 from http import HTTPStatus
 import http.client
 from urllib import parse
 import re
-
+import traceback
 
 # Degraded functionality if these imports are missing
 try:
@@ -67,12 +65,10 @@ class HttpRequestHandler_Plugin:
     VM_FILE = "VM_Configure.JSON"
     def __init__(self, baseHttp):
 
-        # print('init plugin')
-
+        # http request handler        
         self.baseHttp : SimpleHTTPRequestHandler = baseHttp
 
-        # print('init plugin1')
-
+        # api router setting
         self.router = {
             "GET":{
                     "/api/vms":self.get_vms
@@ -86,7 +82,6 @@ class HttpRequestHandler_Plugin:
                 "/api/vms/\d":self.delete_vms
             }
         }
-        # print('init plugin2')
 
         pass
 
@@ -95,12 +90,10 @@ class HttpRequestHandler_Plugin:
     def do_GET(self):
         found = False
         self._urlParse()
-        print(self.url)
-
         try:
             
             for k in self.router['GET']:
-                print(k)
+                
                 pattern = '^' + k + '$'
                 matchs = re.findall(pattern,self.url.path.lower())
                 if len(matchs) > 0:
@@ -109,48 +102,43 @@ class HttpRequestHandler_Plugin:
                     break
             
         except Exception as e:
-            print(e)
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            print(f"Error Type: {exc_type.__name__}")
-            print(f"File Name: {exc_tb.tb_frame.f_code.co_filename}")
-            print(f"Line Number: {exc_tb.tb_lineno}")
+            traceback.print_exc()
 
         return found
 
     def do_POST(self):
         found = False
+        body_bytes = b"" 
+        self.body_bytes = body_bytes
         self._urlParse()
 
-        try:
-            content_length_header = self.baseHttp.headers.get("Content-Length")
-            if content_length_header is None:   
-                return False
+        # try:
+        #     content_length_header = self.baseHttp.headers.get("Content-Length")
+        #     if content_length_header is None:   
+        #         return False
               
-            content_length = int(content_length_header)
-            body_bytes = b""
-            remaining = content_length
-            while remaining > 0:
-                chunk = self.baseHttp.rfile.read(remaining)
-                if not chunk:
-                    break
-                body_bytes += chunk
-                remaining -= len(chunk)
+        #     content_length = int(content_length_header)
+        #     remaining = content_length
+        #     while remaining > 0:
+        #         chunk = self.baseHttp.rfile.read(remaining)
+        #         if not chunk:
+        #             break
+        #         body_bytes += chunk
+        #         remaining -= len(chunk)
             
-            self.body_bytes = body_bytes
-        except Exception as e:
-            print(e)
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            print(f"Error Type: {exc_type.__name__}")
-            print(f"File Name: {exc_tb.tb_frame.f_code.co_filename}")
-            print(f"Line Number: {exc_tb.tb_lineno}")
-            
+        #     self.body_bytes = body_bytes
+        # except Exception as e:
+        #     traceback.print_exc()
+        #     return False
+
+        
+        _bodyOK,_1,_2 = self._getRequestBody()
+        if _bodyOK == False:
+            print('get body error \n')
+            print(_2)
             return False
 
 
-
-        # _success,_state,_msg = self._getRequestBody()
-
-        
         for k in self.router['POST']:
             pattern = '^' + k + '$'
             matchs = re.findall(pattern,self.url.path.lower())
@@ -164,11 +152,14 @@ class HttpRequestHandler_Plugin:
 
 
     def do_PUT(self):
+        found = False
         self._urlParse()
-        pass
+        self.body_bytes = b''
+        return found
 
     def do_DELETE(self):
         found = False
+        self.body_bytes = b''
         self._urlParse()
         for k in self.router['DELETE']:
             pattern = '^' + k + '$'
@@ -256,24 +247,18 @@ class HttpRequestHandler_Plugin:
             content_length_header = self.baseHttp.headers.get("Content-Length")
             if content_length_header is None:
                 return False,411,"Content-Length required"
-                # self.send_error(411, "Content-Length required")
-                # return
+            
             try:
                 content_length = int(content_length_header)
                 if content_length < 0:
                     return False,400, "Invalid Content-Length"
-                    # self.send_error(400, "Invalid Content-Length")
-                    # return
+                   
             except ValueError:
-                print(e)
-                exc_type, exc_obj, exc_tb = sys.exc_info()
-                print(f"Error Type: {exc_type.__name__}")
-                print(f"File Name: {exc_tb.tb_frame.f_code.co_filename}")
-                print(f"Line Number: {exc_tb.tb_lineno}")
+                traceback.print_exc()
+             
                 return False,400, "Invalid Content-Length header"
                 
-                # self.send_error(400, "Invalid Content-Length header")
-                # return
+                
             body_bytes = b""
             remaining = content_length
             while remaining > 0:
@@ -288,11 +273,11 @@ class HttpRequestHandler_Plugin:
             
             self.body_bytes = body_bytes
         except Exception as e:
-            print(e)
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            print(f"Error Type: {exc_type.__name__}")
-            print(f"File Name: {exc_tb.tb_frame.f_code.co_filename}")
-            print(f"Line Number: {exc_tb.tb_lineno}")
+            traceback.print_exc()
+            return False,400,''
+
+        return True,200,''
+          
 
     def _load_vms_txt(self):
         if not os.path.exists(self.VM_FILE):
@@ -302,7 +287,7 @@ class HttpRequestHandler_Plugin:
             try:
                 return f.read()
             except Exception as e:
-                print(e)
+                traceback.print_exc()
                 return []
 
     def _load_vms_object(self) -> []:
@@ -351,6 +336,8 @@ class HttpRequestHandler_Plugin:
     def _save_vms(self, vm_list):
         with open(self.VM_FILE, "w+", encoding="utf-8") as f:
             json.dump(vm_list, f, ensure_ascii=False, indent=2)
+
+
 
 
 # HTTP handler with WebSocket upgrade support
@@ -697,9 +684,9 @@ class WebSockifyRequestHandler(WebSocketRequestHandlerMixIn, SimpleHTTPRequestHa
         if self.only_upgrade:
             self.send_error(405)
         else:
-            print(self.path)
+            # print(self.path)
             if self.httpHandler.do_GET() == False:
-                print("no found get ")
+                # print("no found get ")
                 super().do_GET()
 
 
@@ -745,10 +732,11 @@ class WebSockifyRequestHandler(WebSocketRequestHandlerMixIn, SimpleHTTPRequestHa
         HTTP Request Handle [PUT]
         '''
 
-        if self.path == "/api/vms":
-            pass
-        else:
-            self.send_error(405)
+        self.send_error(405)
+        # if self.path == "/api/vms":
+        #     pass
+        # else:
+        #     self.send_error(405)
 
     def do_PATCH(self):
         self.send_error(405)

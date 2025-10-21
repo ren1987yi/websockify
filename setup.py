@@ -1,9 +1,9 @@
 from setuptools import setup
 
-version = '0.13.2'
+version = '0.13.4'
 name = 'websockify'
-long_description = open("README.md").read() + "\n" + \
-    open("CHANGES.txt").read() + "\n"
+long_description = open("README.md",encoding='utf-8').read() + "\n" + \
+    open("CHANGES.txt",encoding='utf-8').read() + "\n"
 
 setup(
     name=name,
